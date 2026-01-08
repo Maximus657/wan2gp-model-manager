@@ -297,7 +297,7 @@ class ModelManagerPlugin(WAN2GPPlugin):
         """Create the Model Manager UI using native Gradio components."""
         
         with gr.Row():
-            gr.Markdown("### 📦 Model Manager V2")
+            gr.Markdown("### 📦 Model Manager")
         
         with gr.Row():
             search_box = gr.Textbox(label="🔍 Search", placeholder="Filter by name...", scale=2)
