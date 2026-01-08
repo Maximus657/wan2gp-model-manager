@@ -22,30 +22,6 @@ class ModelManagerPlugin(WAN2GPPlugin):
         self.usage_file = os.path.join(self.plugin_dir, "model_usage.json")
         
         self.models_cache = []
-        self.usage_stats = {}
-        self.load_usage_stats()
-
-    def load_usage_stats(self):
-        try:
-            if os.path.exists(self.usage_file):
-                with open(self.usage_file, 'r', encoding='utf-8') as f:
-                    self.usage_stats = json.load(f)
-        except:
-            self.usage_stats = {}
-
-    def save_usage_stats(self):
-        try:
-            with open(self.usage_file, 'w', encoding='utf-8') as f:
-                json.dump(self.usage_stats, f, indent=2)
-        except:
-            pass
-
-    def get_usage_info(self, model_name):
-        if model_name in self.usage_stats:
-            stats = self.usage_stats[model_name]
-            return stats.get("count", 0), stats.get("last_used")
-        return 0, None
-
     def setup_ui(self):
         self.request_global("server_config")
         self.add_tab(
@@ -140,8 +116,6 @@ class ModelManagerPlugin(WAN2GPPlugin):
                             stat = os.stat(full_path)
                             rel_path = os.path.relpath(full_path, abs_base_dir)
                             model_type, type_color, type_icon = self.detect_model_type(filename, full_path, stat.st_size)
-                            usage_count, last_used = self.get_usage_info(filename)
-                            
                             models.append({
                                 "name": filename,
                                 "path": full_path,
@@ -152,9 +126,7 @@ class ModelManagerPlugin(WAN2GPPlugin):
                                 "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
                                 "model_type": model_type,
                                 "type_color": type_color,
-                                "type_icon": type_icon,
-                                "usage_count": usage_count,
-                                "last_used": last_used
+                                "type_icon": type_icon
                             })
                         except OSError:
                             continue
@@ -189,8 +161,7 @@ class ModelManagerPlugin(WAN2GPPlugin):
         
         choices = []
         for m in filtered:
-            usage = f"🔄{m['usage_count']}x" if m['usage_count'] > 0 else "⚠️Never"
-            label = f"{m['type_icon']} {m['name']} | {m['size_str']} | {usage}"
+            label = f"{m['type_icon']} {m['name']} | {m['size_str']}"
             choices.append((label, m["path"]))
         
         return choices, filtered
@@ -232,16 +203,10 @@ class ModelManagerPlugin(WAN2GPPlugin):
             checked = "checked" if is_sel else ""
             path_esc = m["path"].replace("\\", "\\\\").replace("'", "\\'")
             
-            if m['usage_count'] > 0:
-                usage_html = f'<span class="mm-usage">🔄 {m["usage_count"]}x</span>'
-            else:
-                usage_html = '<span class="mm-usage never">⚠️ Never</span>'
-            
             html += f'''<div class="mm-item {sel_class}">
                 <input type="checkbox" class="mm-cb" {checked} onchange="mmToggle(this, '{path_esc}')">
                 <div class="mm-info"><div class="mm-name">{m["name"]}</div><div class="mm-path">📁 {m["rel_path"]}</div></div>
                 <span class="mm-type" style="background:{m['type_color']};color:white;">{m['type_icon']} {m['model_type']}</span>
-                {usage_html}
                 <span class="mm-date">📅 {m["modified"]}</span>
                 <span class="mm-size">{m["size_str"]}</span>
             </div>'''
@@ -252,7 +217,6 @@ class ModelManagerPlugin(WAN2GPPlugin):
     def get_stats_html(self, models, selected_paths):
         total_size = sum(m["size"] for m in models)
         selected_size = sum(m["size"] for m in models if m["path"] in selected_paths)
-        never_used = sum(1 for m in models if m["usage_count"] == 0)
         
         return f"""
         <div style="display:flex; gap:30px; padding:12px 20px; background:linear-gradient(135deg,#1e3a5f,#2d4a6f); border-radius:10px; color:white; margin-bottom:10px;">
@@ -260,7 +224,6 @@ class ModelManagerPlugin(WAN2GPPlugin):
             <div style="text-align:center;"><div style="font-size:1.3em;font-weight:700;">💾 {self.format_size(total_size)}</div><div style="font-size:0.75em;opacity:0.8;">Total</div></div>
             <div style="text-align:center;"><div style="font-size:1.3em;font-weight:700;">✅ {len(selected_paths)}</div><div style="font-size:0.75em;opacity:0.8;">Selected</div></div>
             <div style="text-align:center;"><div style="font-size:1.3em;font-weight:700;">🗑️ {self.format_size(selected_size)}</div><div style="font-size:0.75em;opacity:0.8;">To Delete</div></div>
-            <div style="text-align:center;"><div style="font-size:1.3em;font-weight:700;">⚠️ {never_used}</div><div style="font-size:0.75em;opacity:0.8;">Never Used</div></div>
         </div>
         """
 
