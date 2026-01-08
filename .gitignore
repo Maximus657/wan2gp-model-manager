@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+model_usage.json
